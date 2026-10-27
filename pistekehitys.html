@@ -192,4 +192,55 @@ function nayta() {
   var h = '<div class="card tiedot">';
   h += '<div class="head"><div><div class="teamname">' + esc(nimi) + '</div>';
   h += '<div class="meta">Viimeisin päivä ' + esc(pvm(viim.d)) + ' · näytetään ' + rivit.length + ' päivää</div></div>';
-  h += '<div class="nyt">' +
+  h += '<div class="nyt">' + esc(viim.pisteet) + '<span>pistettä nyt</span></div></div>';
+
+  h += '<div class="kaaviot">';
+  h += '<div class="kaavio"><div class="ktitle">Pistekehitys</div>' + kayra(pisteet, '#7FD4F5', 'rgba(127,212,245,.14)', false, '') + '</div>';
+  h += '<div class="kaavio"><div class="ktitle">Sijoitus (ylempänä parempi)</div>' + kayra(sijat, '#F2C14E', 'rgba(242,193,78,.12)', true, '.') + '</div>';
+  h += '</div>';
+
+  h += '<div class="stats">';
+  h += stat('Sija nyt', viim.sija === null ? '-' : viim.sija);
+  h += stat('Edellinen sija', edel && edel.sija !== null ? edel.sija : '-');
+  h += stat('Sijamuutos', sm, smCls);
+  h += stat('Ero 1.', ykkonen ? '-' : (b.diffFirst || '-'));
+  h += stat('Ero ylempään', eroYlempaan || '-');
+  h += stat('Pisteiden muutos', pm, pmCls);
+  h += stat('P/P nyt', b.pp || '-');
+  h += stat('Paras sija', parasSija);
+  h += stat('Korkeimmat pisteet', korkein);
+  h += '</div></div>';
+
+  out.innerHTML = h;
+}
+
+Promise.all([haeData('pistekehitys'), haeData('taulukko')]).then(function(res) {
+  DATA = res[0];
+  NYT_PVM = isoPvm(res[1].updatedAt);
+  (res[1].rows || []).forEach(function(r) { NYT[r.team] = r; });
+
+  var nimet = (DATA.teams || []).map(function(t) { return t.team; })
+    .sort(function(a, b) { return a.localeCompare(b, 'fi'); });
+  if (!nimet.length) { out.innerHTML = '<div class="card virhe">Pistehistoriasta ei löytynyt dataa.</div>'; return; }
+
+  sel.innerHTML = nimet.map(function(n) {
+    return '<option value="' + esc(n) + '">' + esc(n) + '</option>';
+  }).join('');
+
+  var alku = nimet[0];
+  var haluttu = (new URLSearchParams(location.search).get('team') || '').toLowerCase();
+  nimet.forEach(function(n) { if (n.toLowerCase() === haluttu) alku = n; });
+  sel.value = alku;
+  nayta();
+
+  sel.addEventListener('change', function() {
+    nayta();
+    history.replaceState(null, '', '?team=' + encodeURIComponent(sel.value));
+  });
+  jakso.addEventListener('change', nayta);
+}).catch(function(e) {
+  out.innerHTML = '<div class="card virhe">Datan lataus epäonnistui (' + esc(e.message) + ')</div>';
+});
+</script>
+</body>
+</html>
