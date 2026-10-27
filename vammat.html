@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vammat – NHL Pörssi 26–27</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.ohjaus{padding:12px 14px;display:grid;gap:8px;}
+.sub{font-size:12px;color:var(--muted);line-height:1.4;}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+#vq{flex:1 1 220px;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px;background:var(--row1);color:var(--text);outline:none;}
+#vq::placeholder{color:var(--muted);}
+.chk{display:flex;align-items:center;gap:6px;font-size:14px;background:var(--row1);border-radius:999px;padding:8px 12px;cursor:pointer;}
+.count{font-size:12px;color:var(--muted);}
+.shead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding-right:12px;}
+.dbtns{display:flex;gap:6px;}
+.dbtn{border:1px solid var(--line);background:var(--row1);color:var(--text);border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer;}
+.dbtn.on{background:var(--ice);color:var(--bg);border-color:var(--ice);font-weight:700;}
+.lista{padding:0 10px 10px;display:grid;gap:4px;}
+.mrow{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:var(--row1);border-radius:8px;padding:8px 10px;}
+.mrow:nth-child(even){background:var(--row2);}
+.mrow.mine{box-shadow:inset 4px 0 0 var(--ice);}
+.mmain{min-width:0;}
+.mname{font-weight:700;margin-right:6px;}
+.mteam{font-size:12px;color:var(--muted);}
+.mwhen{font-size:13px;font-weight:700;white-space:nowrap;}
+.mpool{grid-column:1/-1;font-size:12px;color:var(--ice);}
+.mpool a{text-decoration:none;}
+.mpool a:hover{text-decoration:underline;}
+details{padding:0 10px 10px;}
+details summary{cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:4px 4px 8px;}
+.kortit{padding:0 10px 10px;display:grid;gap:8px;}
+.vk{background:var(--row1);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px;}
+.vk.mine{border:2px solid var(--ice);}
+.ctop{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.cname{font-size:17px;font-weight:700;}
+.cmeta{font-size:12px;color:var(--muted);margin-top:2px;}
+.cinfo{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:14px;}
+.cinfo b{color:var(--muted);font-weight:600;}
+.ccomm{font-size:13px;line-height:1.45;color:var(--text);opacity:.9;}
+.cpool{font-size:13px;font-weight:600;color:var(--bg);background:var(--ice);border-radius:8px;padding:5px 8px;}
+.cpool a{text-decoration:none;}
+.cpool a:hover{text-decoration:underline;}
+.badge{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 9px;white-space:nowrap;color:#fff;}
+.badge.lt{background:#C8102E;}
+.badge.out{background:#E0603A;}
+.badge.ir{background:#EF8A2B;color:var(--bg);}
+.badge.dtd{background:#F2C14E;color:var(--bg);}
+.badge.susp{background:#6B7F96;}
+.badge.oth{background:#4A6789;}
+.none{font-size:13px;color:var(--muted);padding:4px 2px;}
+@media (max-width:520px){
+  .mrow{grid-template-columns:1fr auto;}
+  .mwhen{grid-column:1/-1;}
+  .cname{font-size:16px;}
+}
+</style>
+</head>
+<body>
+<header class="top"><div class="in"><div class="brand">🏒 NHL Pörssi 26–27</div></div></header>
+<nav class="nav"><div class="in">
+  <a href="./">Taulukko</a>
+  <a href="joukkueet.html">Joukkueet</a>
+  <a href="pistekehitys.html">Pistekehitys</a>
+  <a href="tilastot.html">Tilastot</a>
+  <a href="vammat.html" class="on">Vammat</a>
+</div></nav>
+
+<main class="wrap">
+  <div class="card ohjaus">
+    <div class="sub" id="lahde">Lähde: ESPN. Paluupäivät ovat ESPN:n arvioita.</div>
+    <div class="controls">
+      <input id="vq" type="search" placeholder="Hae pelaajaa tai joukkuetta" autocomplete="off">
+      <label class="chk"><input id="vpool" type="checkbox"> Vain pörssin pelaajat</label>
+    </div>
+    <div id="vcount" class="count"></div>
+  </div>
+
+  <div class="card">
+    <div class="shead"><div class="ctitle">Pian palaamassa (arvio)</div>
+      <div class="dbtns">
+        <button type="button" class="dbtn" data-d="3">3 pv</button>
+        <button type="button" class="dbtn on" data-d="7">7 pv</button>
+        <button type="button" class="dbtn" data-d="14">14 pv</button>
+      </div>
+    </div>
+    <div id="vsoon" class="lista"><div class="none">Ladataan…</div></div>
+    <div id="vover"></div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">Kaikki loukkaantumiset</div>
+    <div id="vlist" class="kortit"><div class="none">Ladataan…</div></div>
+  </div>
+</main>
+
+<script src="common.js"></script>
+<script>
+var RIVIT = [];
+var tila = { days: 7, onlyPool: false, q: '' };
+var soonEl = document.getElementById('vsoon');
+var overEl = document.getElementById('vover');
+var listEl = document.getElementById('vlist');
+var countEl = document.getElementById('vcount');
+var qEl = document.getElementById('vq');
+var poolEl = document.getElementById('vpool');
+
+var tanaan = new Date();
+tanaan.setHours(0, 0, 0, 0);
+
+function norm(t) {
+  return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+// Päiviä paluuarvioon tästä päivästä (lasketaan selaimessa, joten pysyy ajan tasalla)
+function paivia(iso) {
+  if (!iso) return null;
+  var p = iso.split('-');
+  var d = new Date(+p[0], +p[1] - 1, +p[2]);
+  return Math.round((d - tanaan) / 86400000);
+}
+function fi(iso) {
+  if (!iso) return '-';
+  var p = iso.split('-');
+  return parseInt(p[2], 10) + '.' + parseInt(p[1], 10) + '.' + p[0];
+}
+function luokka(s) {
+  var u = String(s).toUpperCase();
+  if (u.indexOf('SUSP') >= 0) return 'susp';
+  if (u.indexOf('LT') >= 0) return 'lt';
+  if (u.indexOf('DAY') >= 0 || u === 'DTD') return 'dtd';
+  if (u.indexOf('OUT') >= 0) return 'out';
+  if (u.indexOf('IR') >= 0) return 'ir';
+  return 'oth';
+}
+function nimike(s) {
+  return /day-to-day/i.test(s) ? 'DTD' : (s || '-');
+}
+function milloin(n) {
+  if (n === null) return '';
+  if (n === 0) return 'palaa tänään';
+  if (n === 1) return 'palaa huomenna';
+  if (n > 1) return 'palaa ' + n + ' pv päästä';
+  return 'arvio ohitettu ' + (-n) + ' pv sitten';
+}
+function poolTeksti(r) {
+  if (!r.pool.length) return '';
+  return 'Valittu ' + r.pool.length + ' joukkueeseen: ' + r.pool.map(function(t) {
+    return '<a href="joukkueet.html?team=' + encodeURIComponent(t.team) + '">' +
+      esc((t.rank ? t.rank + '. ' : '') + t.team) + '</a>';
+  }).join(', ');
+}
+function osuu(r) {
+  if (tila.onlyPool && !r.pool.length) return false;
+  if (!tila.q) return true;
+  var hay = norm(r.player + ' ' + r.nhl + ' ' + r.pool.map(function(t) { return t.team; }).join(' '));
+  return hay.indexOf(tila.q) !== -1;
+}
+
+function pikkurivi(r) {
+  var h = '<div class="mrow' + (r.pool.length ? ' mine' : '') + '">';
+  h += '<div class="mmain"><span class="mname">' + esc(r.player) + '</span>';
+  h += '<span class="mteam">' + esc(r.nhl) + '</span></div>';
+  h += '<span class="badge ' + luokka(r.status) + '">' + esc(nimike(r.status)) + '</span>';
+  h += '<span class="mwhen">' + esc(milloin(r.d)) + '</span>';
+  if (r.pool.length) h += '<div class="mpool">' + poolTeksti(r) + '</div>';
+  return h + '</div>';
+}
+
+function kortti(r) {
+  var h = '<div class="vk' + (r.pool.length ? ' mine' : '') + '">';
+  h += '<div class="ctop"><div><div class="cname">' + esc(r.player) + '</div>';
+  h += '<div class="cmeta">' + esc(r.nhl) + '</div></div>';
+  h += '<span class="badge ' + luokka(r.status) + '">' + esc(nimike(r.status)) + '</span></div>';
+  h += '<div class="cinfo"><span><b>Vamma:</b> ' + esc(r.injury || '-') + '</span>';
+  h += '<span><b>Arvioitu paluu:</b> ' + esc(fi(r.ret)) + (r.d !== null ? ' (' + esc(milloin(r.d)) + ')' : '') + '</span></div>';
+  if (r.comment) h += '<div class="ccomm">' + esc(r.comment) + '</div>';
+  if (r.pool.length) h += '<div class="cpool">' + poolTeksti(r) + '</div>';
+  return h + '</div>';
+}
+
+function piirra() {
+  var nakyvat = RIVIT.filter(osuu);
+
+  var pian = nakyvat.filter(function(r) { return r.d !== null && r.d >= 0 && r.d <= tila.days; })
+    .sort(function(a, b) { return a.d - b.d || b.pool.length - a.pool.length; });
+  soonEl.innerHTML = pian.length ? pian.map(pikkurivi).join('')
+    : '<div class="none">Ei arvioituja paluita seuraavan ' + tila.days + ' päivän aikana.</div>';
+
+  var ohi = nakyvat.filter(function(r) { return r.d !== null && r.d < 0; })
+    .sort(function(a, b) { return b.d - a.d; });
+  overEl.innerHTML = ohi.length
+    ? '<details><summary>Arvio ohitettu (' + ohi.length + ')</summary><div class="lista" style="padding:0">' +
+      ohi.map(pikkurivi).join('') + '</div></details>'
+    : '';
+
+  var kaikki = nakyvat.slice().sort(function(a, b) {
+    return (b.pool.length > 0) - (a.pool.length > 0) ||
+      a.nhl.localeCompare(b.nhl, 'fi') || a.player.localeCompare(b.player, 'fi');
+  });
+  listEl.innerHTML = kaikki.length ? kaikki.map(kortti).join('') : '<div class="none">Ei osumia.</div>';
+  countEl.textContent = kaikki.length + ' / ' + RIVIT.length + ' pelaajaa';
+}
+
+document.querySelectorAll('.dbtn').forEach(function(b) {
+  b.addEventListener('click', function() {
+    tila.days = parseInt(b.getAttribute('data-d'), 10);
+    document.querySelectorAll('.dbtn').forEach(function(x) { x.classList.remove('on'); });
+    b.classList.add('on');
+    piirra();
+  });
+});
+qEl.addEventListener('input', function() { tila.q = norm(qEl.value.trim()); piirra(); });
+poolEl.addEventListener('change', function() { tila.onlyPool = poolEl.checked; piirra(); });
+
+haeData('vammat').then(function(d) {
+  document.getElementById('lahde').textContent =
+    'Lähde: ESPN. Päivitetty: ' + (d.updated || '-') + '. Paluupäivät ovat ESPN:n arvioita.';
+  RIVIT = (d.rows || []).map(function(r) {
+    r.pool = r.pool || [];
+    r.d = paivia(r.ret);
+    return r;
+  });
+  piirra();
+}).catch(function(e) {
+  listEl.innerHTML = '<div class="none">Datan lataus epäonnistui (' + esc(e.message) + ')</div>';
+  soonEl.innerHTML = '';
+});
+</script>
+</body>
+</html>
