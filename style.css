@@ -1,5 +1,5 @@
 :root{
-  --bg:#0E2A47;--bg2:#0A2038;--row1:#163A5F;--row2:#12324F;--line:#24496F;
+  --bg:#0E2A47;--bg2:#0A2038;--row1:#1C4675;--row2:#0F2A45;--line:#24496F;
   --red:#C8102E;--text:#EAF2FA;--muted:#9FB6CE;--ice:#7FD4F5;
   --up:#5EE08A;--down:#FF6B6B;--gold:#F2C14E;--silver:#C9D3DD;--bronze:#D08C4A;
 }
@@ -13,7 +13,8 @@ a{color:inherit;}
 .brand{font-weight:700;font-size:18px;letter-spacing:.02em;}
 
 .nav{background:var(--bg2);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;}
-.nav .in{max-width:760px;margin:0 auto;padding:0 6px;display:flex;overflow-x:auto;}
+.nav .in{max-width:760px;margin:0 auto;padding:0 6px;display:flex;overflow-x:auto;scrollbar-width:none;}
+.nav .in::-webkit-scrollbar{display:none;}
 .nav a{padding:11px 10px;text-decoration:none;color:var(--muted);font-size:14px;white-space:nowrap;border-bottom:3px solid transparent;}
 .nav a.on{color:#fff;border-bottom-color:var(--ice);}
 
@@ -30,22 +31,37 @@ tbody tr:nth-child(odd) td{background:var(--row1);}
 tbody tr:nth-child(even) td{background:var(--row2);}
 th.l,td.l{text-align:left;}
 td.pts{font-weight:700;}
+td.team{word-break:break-word;}
 td.team a{text-decoration:none;font-weight:600;}
 td.team a:hover{text-decoration:underline;}
 
 .medal{display:inline-flex;width:26px;height:26px;border-radius:50%;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--bg);}
 .m1{background:var(--gold);}.m2{background:var(--silver);}.m3{background:var(--bronze);}
 .rk{display:inline-block;width:26px;text-align:center;font-weight:700;}
-.chg{font-size:11px;margin-left:3px;}
+.chg{font-size:11px;margin-left:3px;white-space:nowrap;}
 .up{color:var(--up);}.down{color:var(--down);}
 
 .vr p{margin:0;padding:10px 14px;line-height:1.5;font-size:15px;border-top:1px solid var(--line);}
 .vr .jakso{font-weight:400;font-size:13px;color:var(--muted);margin-left:8px;}
 
-@media (max-width:480px){
+@media (max-width:520px){
+  .top .in{padding:10px 12px;}
   .brand{font-size:16px;}
-  th{font-size:11px;padding:8px 3px;}
-  td{font-size:13px;padding:8px 3px;}
+  .nav .in{flex-wrap:wrap;justify-content:center;}
+  .nav a{padding:9px 7px;font-size:13px;}
+  .wrap{padding:10px 6px 24px;}
+
+  table{table-layout:fixed;}
+  th{font-size:11px;padding:7px 2px;line-height:1.2;}
+  td{font-size:13px;padding:8px 2px;}
+  th.c-sija{width:3.6em;}
+  th.c-pts{width:4.4em;}
+  th.c-pp{width:3em;}
+  th.c-e1{width:3.6em;}
+  th.c-es{width:4em;}
+  th.c-sija,td.sija{text-align:center;}
+
   .medal,.rk{width:22px;height:22px;font-size:12px;}
+  .chg{display:block;font-size:10px;margin:2px 0 0;}
   .vr p{font-size:14px;}
 }
