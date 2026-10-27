@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tilastot – NHL Pörssi 26–27</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.haku{padding:12px 14px;display:grid;gap:8px;}
+.lbltop{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+#pq{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px;background:var(--row1);color:var(--text);outline:none;}
+#pq::placeholder{color:var(--muted);}
+.sugg{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{border:1px solid var(--line);background:var(--row1);color:var(--text);border-radius:999px;padding:7px 12px;font-size:14px;cursor:pointer;}
+.chip small{color:var(--muted);}
+.nohit{font-size:13px;color:var(--muted);padding:2px;}
+.pcard{background:var(--row2);border-radius:10px;padding:12px;display:grid;gap:10px;}
+.phead{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;}
+.pname{font-size:21px;font-weight:700;line-height:1.1;}
+.pmeta{font-size:12px;color:var(--muted);margin-top:4px;}
+.ppts{font-size:28px;font-weight:700;text-align:right;line-height:1;}
+.ppts span{display:block;font-size:10px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:4px;}
+.pstats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.pstats div{background:var(--row1);border-radius:8px;padding:6px;text-align:center;}
+.pstats b{display:block;font-size:17px;}
+.pstats span{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+.psub{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+.plist{display:grid;gap:3px;}
+.prow{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;background:var(--row1);border-radius:8px;padding:7px 10px;font-size:15px;}
+.prow:nth-child(even){background:var(--bg);}
+.prank{font-weight:700;color:var(--muted);}
+.pteam a{text-decoration:none;font-weight:600;}
+.pteam a:hover{text-decoration:underline;}
+.pp{font-weight:700;}
+.osiot{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;align-items:start;}
+.osiot .card.wide{grid-column:1/-1;}
+.scroll{overflow-x:auto;}
+table.st{table-layout:auto;}
+table.st th,table.st td{white-space:nowrap;}
+table.st td.l{white-space:normal;word-break:break-word;font-weight:600;}
+td.plink{cursor:pointer;text-decoration:underline;text-decoration-color:rgba(127,212,245,.45);text-underline-offset:3px;}
+@media (max-width:520px){
+  .pname{font-size:18px;}
+  .ppts{font-size:24px;}
+  .prow{font-size:14px;}
+  table.st th{padding:7px 5px;}
+  table.st td{padding:8px 5px;}
+}
+</style>
+</head>
+<body>
+<header class="top"><div class="in"><div class="brand">🏒 NHL Pörssi 26–27</div></div></header>
+<nav class="nav"><div class="in">
+  <a href="./">Taulukko</a>
+  <a href="joukkueet.html">Joukkueet</a>
+  <a href="pistekehitys.html">Pistekehitys</a>
+  <a href="tilastot.html" class="on">Tilastot</a>
+  <a href="vammat.html">Vammat</a>
+</div></nav>
+
+<main class="wrap">
+  <div class="updated" id="paivitetty"></div>
+  <div class="card haku">
+    <label class="lbltop" for="pq">Pelaajahaku</label>
+    <input id="pq" type="search" placeholder="Kirjoita pelaajan nimi, esim. Makar" autocomplete="off">
+    <div id="psugg" class="sugg"></div>
+    <div id="pres"></div>
+  </div>
+  <div id="osiot" class="osiot"><div class="card virhe">Ladataan…</div></div>
+</main>
+
+<script src="common.js"></script>
+<script>
+var PLAYERS = {};
+var NIMET = [];
+var q = document.getElementById('pq');
+var sugg = document.getElementById('psugg');
+var res = document.getElementById('pres');
+
+function norm(t) {
+  return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+// Näyttää valitun pelaajan kortin
+function nayta(nimi) {
+  var p = PLAYERS[nimi];
+  if (!p) { res.innerHTML = ''; return; }
+  sugg.innerHTML = '';
+  q.value = nimi;
+  var eka = p.teams[0] || {};
+  var joukkueet = p.teams.slice().sort(function(a, b) {
+    return (parseInt(a.rank, 10) || 999) - (parseInt(b.rank, 10) || 999);
+  });
+  var meta = esc(p.pos) + (p.nhl ? ' · ' + esc(p.nhl) : '') + (p.price ? ' · ' + esc(p.price) : '');
+  var h = '<div class="pcard">';
+  h += '<div class="phead"><div><div class="pname">' + esc(p.name) + '</div><div class="pmeta">' + meta + '</div></div>';
+  h += '<div class="ppts">' + esc(eka.p || '0') + '<span>pistettä</span></div></div>';
+  h += '<div class="pstats">';
+  h += '<div><b>' + esc(eka.o || '-') + '</b><span>O</span></div>';
+  h += '<div><b>' + esc(eka.m || '-') + '</b><span>M</span></div>';
+  h += '<div><b>' + esc(eka.s || '-') + '</b><span>S</span></div>';
+  h += '<div><b>' + esc(eka.p || '-') + '</b><span>P</span></div>';
+  h += '</div>';
+  h += '<div class="psub">Valittu ' + joukkueet.length + ' joukkueeseen</div><div class="plist">';
+  joukkueet.forEach(function(t) {
+    h += '<div class="prow"><span class="prank">' + esc(t.rank ? t.rank + '.' : '') + '</span>';
+    h += '<span class="pteam"><a href="joukkueet.html?team=' + encodeURIComponent(t.team) + '">' + esc(t.team) + '</a></span>';
+    h += '<span class="pp">' + esc(t.p || '0') + ' p</span></div>';
+  });
+  h += '</div></div>';
+  res.innerHTML = h;
+}
+
+// Hakuehdotukset kirjoittaessa
+function ehdota() {
+  var termi = norm(q.value.trim());
+  res.innerHTML = '';
+  if (termi.length < 2) { sugg.innerHTML = ''; return; }
+  var osumat = NIMET.filter(function(n) { return norm(n).indexOf(termi) !== -1; }).slice(0, 8);
+  if (osumat.length === 1 && norm(osumat[0]) === termi) { nayta(osumat[0]); return; }
+  if (!osumat.length) {
+    sugg.innerHTML = '<div class="nohit">Ei osumia. Pelaajaa ei ole valittu yhteenkään joukkueeseen, tai nimi on kirjoitettu eri tavalla.</div>';
+    return;
+  }
+  sugg.innerHTML = osumat.map(function(n) {
+    return '<button type="button" class="chip" data-n="' + esc(n) + '">' + esc(n) +
+      ' <small>(' + PLAYERS[n].teams.length + ')</small></button>';
+  }).join('');
+}
+
+// Tilastot-välilehden osiot taulukoiksi
+function piirraOsiot(osiot) {
+  var el = document.getElementById('osiot');
+  if (!osiot.length) { el.innerHTML = '<div class="card virhe">Tilastoja ei löytynyt.</div>'; return; }
+
+  el.innerHTML = osiot.map(function(b) {
+    var leveä = b.headers.length >= 4 ? ' wide' : '';
+    var h = '<div class="card' + leveä + '"><div class="ctitle">' + esc(b.title) + '</div>';
+    h += '<div class="scroll"><table class="st"><thead><tr>';
+    b.headers.forEach(function(x, i) {
+      h += '<th' + (i === 0 ? ' class="l"' : '') + '>' + esc(x) + '</th>';
+    });
+    h += '</tr></thead><tbody>';
+    if (!b.rows.length) {
+      h += '<tr><td colspan="' + b.headers.length + '" class="virhe">Ei vielä tietoja</td></tr>';
+    }
+    b.rows.forEach(function(row) {
+      h += '<tr>';
+      row.forEach(function(x, i) {
+        if (i === 0) {
+          var onPelaaja = !!PLAYERS[x];
+          h += '<td class="l' + (onPelaaja ? ' plink' : '') + '"' + (onPelaaja ? ' data-n="' + esc(x) + '"' : '') + '>' + esc(x) + '</td>';
+        } else {
+          h += '<td>' + esc(x) + '</td>';
+        }
+      });
+      h += '</tr>';
+    });
+    return h + '</tbody></table></div></div>';
+  }).join('');
+
+  // Pelaajan nimen napautus avaa hän hakuun
+  el.addEventListener('click', function(e) {
+    var td = e.target.closest('td.plink');
+    if (!td) return;
+    nayta(td.getAttribute('data-n'));
+    q.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+q.addEventListener('input', ehdota);
+sugg.addEventListener('click', function(e) {
+  var b = e.target.closest('.chip');
+  if (b) nayta(b.getAttribute('data-n'));
+});
+
+haeData('tilastot').then(function(d) {
+  PLAYERS = d.pelaajat || {};
+  NIMET = Object.keys(PLAYERS).sort(function(a, b) { return a.localeCompare(b, 'fi'); });
+  document.getElementById('paivitetty').textContent = 'Päivitetty ' + (d.updatedAt || '-');
+  piirraOsiot(d.osiot || []);
+}).catch(function(e) {
+  document.getElementById('osiot').innerHTML =
+    '<div class="card virhe">Datan lataus epäonnistui (' + esc(e.message) + ')</div>';
+});
+</script>
+</body>
+</html>
