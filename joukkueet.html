@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Joukkueet – NHL Pörssi 26–27</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.valinta{padding:12px 14px;display:grid;gap:6px;}
+.lbltop{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+select{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px;background:var(--row1);color:var(--text);}
+.tiedot{padding:12px 14px;}
+.teamname{font-size:20px;font-weight:700;margin-bottom:10px;word-break:break-word;}
+.boxes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.box{background:var(--row1);border-radius:10px;padding:8px 10px;}
+.box .lbl{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+.box .val{margin-top:2px;font-size:16px;font-weight:700;white-space:nowrap;}
+table.pel{table-layout:fixed;}
+table.pel th.n{width:3em;}
+.nm{font-weight:600;word-break:break-word;}
+.sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;background:var(--ice);color:var(--bg);border-radius:999px;padding:2px 7px;margin-left:6px;vertical-align:2px;}
+.tsub{font-size:11px;color:var(--ice);margin-top:2px;}
+tr.tot td{background:var(--bg) !important;font-weight:700;border-top:2px solid var(--red);}
+.trow{padding:9px 14px;border-top:1px solid var(--line);font-size:14px;line-height:1.45;}
+.tdate{font-size:12px;font-weight:700;color:var(--muted);}
+.tin{color:var(--ice);}
+.tnone{padding:10px 14px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);}
+@media (max-width:520px){
+  .boxes{grid-template-columns:repeat(2,1fr);gap:6px;}
+  .teamname{font-size:18px;}
+  table.pel th.n{width:2.6em;}
+  .trow{font-size:13px;}
+}
+</style>
+</head>
+<body>
+<header class="top"><div class="in"><div class="brand">🏒 NHL Pörssi 26–27</div></div></header>
+<nav class="nav"><div class="in">
+  <a href="./">Taulukko</a>
+  <a href="joukkueet.html" class="on">Joukkueet</a>
+  <a href="pistekehitys.html">Pistekehitys</a>
+  <a href="tilastot.html">Tilastot</a>
+  <a href="vammat.html">Vammat</a>
+</div></nav>
+
+<main class="wrap">
+  <div class="updated" id="paivitetty"></div>
+  <div class="card valinta">
+    <div class="lbltop">Joukkue</div>
+    <select id="valikko"></select>
+  </div>
+  <div id="out" style="display:grid;gap:12px;"><div class="card virhe">Ladataan…</div></div>
+</main>
+
+<script src="common.js"></script>
+<script>
+var VAIHTOJEN_MAX = 2;
+var TEAMS = [];
+var sel = document.getElementById('valikko');
+var out = document.getElementById('out');
+
+function box(l, v) {
+  return '<div class="box"><div class="lbl">' + l + '</div><div class="val">' + esc(v || '-') + '</div></div>';
+}
+
+function osio(otsikko, lista, yht) {
+  var h = '<div class="card"><div class="ctitle">' + otsikko + '</div>';
+  h += '<table class="pel"><thead><tr><th class="l">Pelaaja</th><th class="n">O</th><th class="n">M</th><th class="n">S</th><th class="n">P</th></tr></thead><tbody>';
+  if (!lista.length) h += '<tr><td colspan="5" class="virhe">Ei pelaajia</td></tr>';
+  lista.forEach(function(p) {
+    var sub = [p.nhl, p.price ? p.price + ' €' : ''].filter(Boolean).join(' · ');
+    var tag = p.trade ? '<span class="tag">VAIHTO</span>' : '';
+    var tsub = '';
+    if (p.trade) {
+      tsub = '<div class="tsub">' + (p.trade.date ? 'Tuli ' + esc(p.trade.date) : 'Tuli vaihdossa') +
+             (p.trade.out ? ', tilalta ' + esc(p.trade.out) : '') + '</div>';
+    }
+    h += '<tr><td class="l"><div class="nm">' + esc(p.name) + tag + '</div><div class="sub">' + esc(sub) + '</div>' + tsub + '</td>';
+    h += '<td>' + esc(p.gp) + '</td><td>' + esc(p.g) + '</td><td>' + esc(p.a) + '</td><td class="pts">' + esc(p.p) + '</td></tr>';
+  });
+  h += '<tr class="tot"><td class="l">Yhteensä</td><td>' + esc(yht.gp) + '</td><td>' + esc(yht.g) + '</td><td>' + esc(yht.a) + '</td><td class="pts">' + esc(yht.p) + '</td></tr>';
+  return h + '</tbody></table></div>';
+}
+
+function vaihdot(t) {
+  var lista = t.trades || [];
+  var h = '<div class="card"><div class="ctitle">Vaihdot ' + lista.length + ' / ' + VAIHTOJEN_MAX + '</div>';
+  if (!lista.length) h += '<div class="tnone">Ei vaihtoja.</div>';
+  lista.forEach(function(x) {
+    var outInfo = [x.outNhl, x.outPrice ? x.outPrice + ' €' : '', x.outP !== '' ? 'ehti tuoda ' + x.outP + ' p' : ''].filter(Boolean).join(', ');
+    var inInfo = [x.inNhl, x.inPrice ? x.inPrice + ' €' : ''].filter(Boolean).join(', ');
+    h += '<div class="trow"><div class="tdate">' + esc(x.date || 'Päivämäärä puuttuu') + '</div>';
+    h += '<div><b>' + esc(x.outName || '?') + '</b>' + (outInfo ? ' (' + esc(outInfo) + ')' : '') +
+         ' → <b class="tin">' + esc(x.inName) + '</b>' + (inInfo ? ' (' + esc(inInfo) + ')' : '') + '</div></div>';
+  });
+  return h + '</div>';
+}
+
+function nayta(nimi) {
+  var t = null;
+  TEAMS.forEach(function(x) { if (x.name === nimi) t = x; });
+  if (!t) { out.innerHTML = '<div class="card virhe">Joukkuetta ei löytynyt.</div>'; return; }
+  var h = '<div class="card tiedot"><div class="teamname">' + esc(t.name) + '</div><div class="boxes">';
+  h += box('Sija', t.rank) + box('Pisteet', t.total.p) +
+       box('Hinta', t.cost ? t.cost + ' €' : '') + box('Jäljellä', t.remaining ? t.remaining + ' €' : '');
+  h += '</div></div>';
+  h += vaihdot(t);
+  h += osio('Puolustajat', t.defense, t.defenseTotal);
+  h += osio('Hyökkääjät', t.forwards, t.forwardTotal);
+  out.innerHTML = h;
+}
+
+Promise.all([haeData('joukkueet'), haeData('taulukko')]).then(function(res) {
+  TEAMS = res[0].teams || [];
+  document.getElementById('paivitetty').textContent = 'Päivitetty ' + (res[0].updatedAt || '-');
+
+  // Sijoitukset taulukosta
+  var sijat = {};
+  (res[1].rows || []).forEach(function(r) { sijat[r.team] = r.currentRank; });
+  TEAMS.forEach(function(t) { t.rank = sijat[t.name] || ''; });
+
+  if (!TEAMS.length) {
+    sel.disabled = true;
+    out.innerHTML = '<div class="card virhe">Joukkueita ei ole vielä syötetty.</div>';
+    return;
+  }
+
+  sel.innerHTML = TEAMS.map(function(t) {
+    return '<option value="' + esc(t.name) + '">' + esc(t.name) + '</option>';
+  }).join('');
+
+  // Alkuvalinta osoitteesta (?team=...), kirjainkoolla ei väliä
+  var alku = TEAMS[0].name;
+  var haluttu = (new URLSearchParams(location.search).get('team') || '').toLowerCase();
+  TEAMS.forEach(function(t) { if (t.name.toLowerCase() === haluttu) alku = t.name; });
+
+  sel.value = alku;
+  nayta(alku);
+
+  sel.addEventListener('change', function() {
+    nayta(sel.value);
+    // Päivitetään osoite, jotta linkin voi jakaa suoraan tähän joukkueeseen
+    history.replaceState(null, '', '?team=' + encodeURIComponent(sel.value));
+  });
+}).catch(function(e) {
+  out.innerHTML = '<div class="card virhe">Datan lataus epäonnistui (' + esc(e.message) + ')</div>';
+});
+</script>
+</body>
+</html>
