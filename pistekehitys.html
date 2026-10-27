@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pistekehitys – NHL Pörssi 26–27</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.valinta{padding:12px 14px;display:grid;grid-template-columns:1fr 150px;gap:10px;}
+.field{display:grid;gap:6px;}
+.lbltop{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+select{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px;background:var(--row1);color:var(--text);}
+.tiedot{padding:12px 14px;display:grid;gap:12px;}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;}
+.teamname{font-size:22px;font-weight:700;line-height:1.1;word-break:break-word;}
+.meta{font-size:12px;color:var(--muted);margin-top:4px;}
+.nyt{font-size:30px;font-weight:700;text-align:right;line-height:1;}
+.nyt span{display:block;font-size:10px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:4px;}
+.kaaviot{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.kaavio{background:var(--row2);border-radius:10px;padding:10px;display:grid;gap:6px;}
+.ktitle{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+.spark{width:100%;height:150px;display:block;}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.stat{background:var(--row1);border-radius:10px;padding:8px 10px;}
+.stat .lbl{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+.stat .val{margin-top:2px;font-size:18px;font-weight:700;white-space:nowrap;}
+.flat{color:var(--muted);}
+@media (max-width:620px){
+  .valinta{grid-template-columns:1fr;}
+  .kaaviot{grid-template-columns:1fr;}
+  .teamname{font-size:19px;}
+  .nyt{font-size:26px;}
+  .stats{gap:6px;}
+  .stat{padding:7px 8px;}
+  .stat .val{font-size:16px;}
+  .stat .lbl{font-size:9px;}
+}
+</style>
+</head>
+<body>
+<header class="top"><div class="in"><div class="brand">🏒 NHL Pörssi 26–27</div></div></header>
+<nav class="nav"><div class="in">
+  <a href="./">Taulukko</a>
+  <a href="joukkueet.html">Joukkueet</a>
+  <a href="pistekehitys.html" class="on">Pistekehitys</a>
+  <a href="tilastot.html">Tilastot</a>
+  <a href="vammat.html">Vammat</a>
+</div></nav>
+
+<main class="wrap">
+  <div class="card valinta">
+    <div class="field"><div class="lbltop">Joukkue</div><select id="valikko"></select></div>
+    <div class="field"><div class="lbltop">Jakso</div>
+      <select id="jakso">
+        <option value="10">Viimeiset 10 pv</option>
+        <option value="20">Viimeiset 20 pv</option>
+        <option value="9999" selected>Koko kausi</option>
+      </select>
+    </div>
+  </div>
+  <div id="out"><div class="card virhe">Ladataan…</div></div>
+</main>
+
+<script src="common.js"></script>
+<script>
+var DATA = null;
+var NYT = {};
+var sel = document.getElementById('valikko');
+var jakso = document.getElementById('jakso');
+var out = document.getElementById('out');
+
+function pvm(iso) {
+  var p = String(iso || '').split('-');
+  return p.length === 3 ? parseInt(p[2], 10) + '.' + parseInt(p[1], 10) + '.' : '-';
+}
+
+// Trendiviiva arvoineen. kaanteinen = pienempi arvo ylempänä (sijoitus).
+function kayra(arvot, vari, taytto, kaanteinen, liite) {
+  if (!arvot.length) return '<div class="flat">Ei dataa</div>';
+  var W = 800, H = 170, P = 12;
+  var min = Math.min.apply(null, arvot), max = Math.max.apply(null, arvot);
+  var vali = (max - min) || 1;
+  var askel = arvot.length === 1 ? 0 : (W - P * 2) / (arvot.length - 1);
+  function y(v) {
+    var s = (v - min) / vali * (H - P * 2);
+    return kaanteinen ? P + s : (H - P) - s;
+  }
+  var viiva = '', ala = 'M ' + P + ' ' + (H - P) + ' ';
+  arvot.forEach(function(v, i) {
+    var x = P + askel * i;
+    viiva += (i ? ' L ' : 'M ') + x + ' ' + y(v);
+    ala += 'L ' + x + ' ' + y(v) + ' ';
+  });
+  var lx = P + askel * (arvot.length - 1);
+  ala += 'L ' + lx + ' ' + (H - P) + ' Z';
+  var ly = y(arvot[arvot.length - 1]), fy = y(arvot[0]);
+
+  var svg = '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
+    '<path d="' + ala + '" fill="' + taytto + '"></path>' +
+    '<path d="' + viiva + '" fill="none" stroke="' + vari + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></path>' +
+    '<circle cx="' + lx + '" cy="' + ly + '" r="5" fill="' + vari + '"></circle>' +
+    '<circle cx="' + P + '" cy="' + fy + '" r="4" fill="' + vari + '" opacity=".45"></circle></svg>';
+
+  function lappu(x, yy, teksti, oikealle, naapuriY) {
+    var vasen = (x / W * 100).toFixed(2), yla = (yy / H * 100).toFixed(2);
+    var tx = oikealle ? 'calc(-100% - 8px)' : '8px';
+    var ylos = yy >= H / 2;
+    if (naapuriY !== null && naapuriY !== yy) ylos = naapuriY > yy;
+    if (ylos && yy < 35) ylos = false;
+    if (!ylos && yy > H - 35) ylos = true;
+    var ty = ylos ? 'calc(-100% - 6px)' : '6px';
+    return '<span style="position:absolute;left:' + vasen + '%;top:' + yla + '%;transform:translate(' + tx + ',' + ty + ');' +
+      'font-size:12px;font-weight:700;color:' + vari + ';background:rgba(10,32,56,.9);padding:1px 5px;border-radius:6px;white-space:nowrap;pointer-events:none;">' +
+      esc(teksti) + '</span>';
+  }
+  var n = arvot.length;
+  var lappuset = lappu(lx, ly, arvot[n - 1] + liite, true, n > 1 ? y(arvot[n - 2]) : null);
+  if (n > 1) lappuset = lappu(P, fy, arvot[0] + liite, false, y(arvot[1])) + lappuset;
+  return '<div style="position:relative">' + svg + lappuset + '</div>';
+}
+
+function stat(otsikko, arvo, luokka) {
+  return '<div class="stat"><div class="lbl">' + otsikko + '</div><div class="val ' + (luokka || '') + '">' + esc(arvo) + '</div></div>';
+}
+
+function nayta() {
+  var nimi = sel.value;
+  var t = null;
+  DATA.teams.forEach(function(x) { if (x.team === nimi) t = x; });
+  if (!t) { out.innerHTML = '<div class="card virhe">Joukkuetta ei löytynyt.</div>'; return; }
+
+  var kaikki = [];
+  DATA.dates.forEach(function(d, i) {
+    if (t.points[i] !== null) kaikki.push({ d: d, sija: t.ranks[i], pisteet: t.points[i] });
+  });
+  if (!kaikki.length) { out.innerHTML = '<div class="card virhe">Tälle joukkueelle ei löytynyt historiaa.</div>'; return; }
+
+  var raja = parseInt(jakso.value, 10) || 9999;
+  var rivit = kaikki.length > raja ? kaikki.slice(kaikki.length - raja) : kaikki;
+  var viim = kaikki[kaikki.length - 1];
+  var edel = kaikki.length > 1 ? kaikki[kaikki.length - 2] : null;
+
+  // Sijamuutos ja pisteiden muutos edelliseen päivään
+  var sm = '-', smCls = 'flat';
+  if (edel && edel.sija !== null && viim.sija !== null) {
+    var e = edel.sija - viim.sija;
+    if (e > 0) { sm = '▲' + e; smCls = 'up'; }
+    else if (e < 0) { sm = '▼' + (-e); smCls = 'down'; }
+    else sm = '0';
+  }
+  var pm = '-', pmCls = 'flat';
+  if (edel) {
+    var d = viim.pisteet - edel.pisteet;
+    pm = d > 0 ? '+' + d : String(d);
+    pmCls = d > 0 ? 'up' : (d < 0 ? 'down' : 'flat');
+  }
+
+  var sijat = rivit.map(function(r) { return r.sija; }).filter(function(v) { return v !== null; });
+  var pisteet = rivit.map(function(r) { return r.pisteet; });
+  var parasSija = sijat.length ? Math.min.apply(null, sijat) : '-';
+  var korkein = Math.max.apply(null, pisteet);
+
+  // Tämän hetken luvut taulukosta
+  var b = NYT[nimi] || {};
+  var ykkonen = String(b.currentRank) === '1';
+  var eroYlempaan = b.diffPlace;
+  if (ykkonen) eroYlempaan = '-';
+  else if (!/^\d+$/.test(String(eroYlempaan || '').trim())) eroYlempaan = String(b.currentRank) === '2' ? b.diffFirst : '-';
+
+  var h = '<div class="card tiedot">';
+  h += '<div class="head"><div><div class="teamname">' + esc(nimi) + '</div>';
+  h += '<div class="meta">Viimeisin päivä ' + esc(pvm(viim.d)) + ' · näytetään ' + rivit.length + ' päivää</div></div>';
+  h += '<div class="nyt">' + esc(viim.pisteet) + '<span>pistettä nyt</span></div></div>';
+
+  h += '<div class="kaaviot">';
+  h += '<div class="kaavio"><div class="ktitle">Pistekehitys</div>' + kayra(pisteet, '#7FD4F5', 'rgba(127,212,245,.14)', false, '') + '</div>';
+  h += '<div class="kaavio"><div class="ktitle">Sijoitus (ylempänä parempi)</div>' + kayra(sijat, '#F2C14E', 'rgba(242,193,78,.12)', true, '.') + '</div>';
+  h += '</div>';
+
+  h += '<div class="stats">';
+  h += stat('Sija nyt', viim.sija === null ? '-' : viim.sija);
+  h += stat('Edellinen sija', edel && edel.sija !== null ? edel.sija : '-');
+  h += stat('Sijamuutos', sm, smCls);
+  h += stat('Ero 1.', ykkonen ? '-' : (b.diffFirst || '-'));
+  h += stat('Ero ylempään', eroYlempaan || '-');
+  h += stat('Pisteiden muutos', pm, pmCls);
+  h += stat('P/P nyt', b.pp || '-');
+  h += stat('Paras sija', parasSija);
+  h += stat('Korkeimmat pisteet', korkein);
+  h += '</div></div>';
+
+  out.innerHTML = h;
+}
+
+Promise.all([haeData('pistekehitys'), haeData('taulukko')]).then(function(res) {
+  DATA = res[0];
+  (res[1].rows || []).forEach(function(r) { NYT[r.team] = r; });
+
+  var nimet = (DATA.teams || []).map(function(t) { return t.team; })
+    .sort(function(a, b) { return a.localeCompare(b, 'fi'); });
+  if (!nimet.length) { out.innerHTML = '<div class="card virhe">Pistehistoriasta ei löytynyt dataa.</div>'; return; }
+
+  sel.innerHTML = nimet.map(function(n) {
+    return '<option value="' + esc(n) + '">' + esc(n) + '</option>';
+  }).join('');
+
+  var alku = nimet[0];
+  var haluttu = (new URLSearchParams(location.search).get('team') || '').toLowerCase();
+  nimet.forEach(function(n) { if (n.toLowerCase() === haluttu) alku = n; });
+  sel.value = alku;
+  nayta();
+
+  sel.addEventListener('change', function() {
+    nayta();
+    history.replaceState(null, '', '?team=' + encodeURIComponent(sel.value));
+  });
+  jakso.addEventListener('change', nayta);
+}).catch(function(e) {
+  out.innerHTML = '<div class="card virhe">Datan lataus epäonnistui (' + esc(e.message) + ')</div>';
+});
+</script>
+</body>
+</html>
