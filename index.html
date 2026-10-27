@@ -20,7 +20,14 @@
   <div class="updated" id="paivitetty"></div>
   <div class="card">
     <table>
-      <thead><tr><th class="l">Sija</th><th class="l">Joukkue</th><th>Pisteet</th><th>P/P</th><th>Ero 1.</th><th>Ero sijaan</th></tr></thead>
+      <thead><tr>
+        <th class="l c-sija">Sija</th>
+        <th class="l">Joukkue</th>
+        <th class="c-pts">Pisteet</th>
+        <th class="c-pp">P/P</th>
+        <th class="c-e1">Ero 1.</th>
+        <th class="c-es">Ero sijaan</th>
+      </tr></thead>
       <tbody id="rivit"><tr><td colspan="6" class="virhe">Ladataan…</td></tr></tbody>
     </table>
   </div>
@@ -43,13 +50,21 @@ haeData('taulukko').then(function(d) {
       if (ero > 0) muutos = '<span class="chg up">▲' + ero + '</span>';
       if (ero < 0) muutos = '<span class="chg down">▼' + (-ero) + '</span>';
     }
+
+    // Ero 1. ja Ero sijaan: ykköselle pokaali, muille luku.
+    // Sheet voi antaa sarakkeeseen merkin (esim. 🥈); kakkosen ero edelliseen = ero ykköseen.
     var ykkonen = n === 1;
-    h += '<tr><td class="l">' + sija + muutos + '</td>';
+    var e1 = ykkonen ? '🏆' : esc(r.diffFirst || '-');
+    var es = r.diffPlace;
+    if (ykkonen) es = '-';
+    else if (!/^\d+$/.test(String(es || '').trim())) es = (n === 2 ? r.diffFirst : '-');
+
+    h += '<tr><td class="l sija">' + sija + muutos + '</td>';
     h += '<td class="l team"><a href="joukkueet.html?team=' + encodeURIComponent(r.team) + '">' + esc(r.team) + '</a></td>';
     h += '<td class="pts">' + esc(r.points) + '</td>';
     h += '<td>' + esc(r.pp) + '</td>';
-    h += '<td>' + (ykkonen ? '🏆' : esc(r.diffFirst || '-')) + '</td>';
-    h += '<td>' + (ykkonen ? '-' : esc(r.diffPlace || '-')) + '</td></tr>';
+    h += '<td>' + e1 + '</td>';
+    h += '<td>' + esc(es || '-') + '</td></tr>';
   });
   document.getElementById('rivit').innerHTML = h ||
     '<tr><td colspan="6" class="virhe">Joukkueita ei ole vielä syötetty.</td></tr>';
