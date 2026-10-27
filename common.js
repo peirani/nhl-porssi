@@ -15,3 +15,12 @@ function haeData(nimi) {
     return r.json();
   });
 }
+
+// Vierittää valikon niin, että avoinna oleva sivu näkyy (puhelimella valikko vierii sivusuunnassa)
+(function() {
+  var on = document.querySelector('.nav a.on');
+  var rivi = document.querySelector('.nav .in');
+  if (on && rivi && rivi.scrollWidth > rivi.clientWidth) {
+    rivi.scrollLeft = on.offsetLeft - (rivi.clientWidth - on.offsetWidth) / 2;
+  }
+})();
