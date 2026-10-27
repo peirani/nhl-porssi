@@ -65,6 +65,7 @@ select{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 1
 <script>
 var DATA = null;
 var NYT = {};
+var NYT_PVM = '';   // Taulukon päivityspäivä muodossa 2026-10-27
 var sel = document.getElementById('valikko');
 var jakso = document.getElementById('jakso');
 var out = document.getElementById('out');
@@ -72,6 +73,17 @@ var out = document.getElementById('out');
 function pvm(iso) {
   var p = String(iso || '').split('-');
   return p.length === 3 ? parseInt(p[2], 10) + '.' + parseInt(p[1], 10) + '.' : '-';
+}
+
+// '27.10.2026 klo 9.30.00' -> '2026-10-27'
+function isoPvm(s) {
+  var m = String(s || '').match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  return m ? m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2) : '';
+}
+
+function luku(s) {
+  var n = parseInt(String(s || '').replace(/[^\d-]/g, ''), 10);
+  return isNaN(n) ? null : n;
 }
 
 // Trendiviiva arvoineen. kaanteinen = pienempi arvo ylempänä (sijoitus).
@@ -133,6 +145,18 @@ function nayta() {
   DATA.dates.forEach(function(d, i) {
     if (t.points[i] !== null) kaikki.push({ d: d, sija: t.ranks[i], pisteet: t.points[i] });
   });
+
+  // Tämän hetken tilanne taulukosta käyrän viimeiseksi pisteeksi,
+  // jotta luvut ovat samat kuin Taulukko-sivulla (snapshot otetaan vasta iltapäivällä)
+  var b = NYT[nimi] || {};
+  var nytPisteet = luku(b.points), nytSija = luku(b.currentRank);
+  if (NYT_PVM && nytPisteet !== null) {
+    var viimeinen = kaikki.length ? kaikki[kaikki.length - 1] : null;
+    var tanaan = { d: NYT_PVM, sija: nytSija, pisteet: nytPisteet };
+    if (!viimeinen || NYT_PVM > viimeinen.d) kaikki.push(tanaan);
+    else if (NYT_PVM === viimeinen.d) kaikki[kaikki.length - 1] = tanaan;
+  }
+
   if (!kaikki.length) { out.innerHTML = '<div class="card virhe">Tälle joukkueelle ei löytynyt historiaa.</div>'; return; }
 
   var raja = parseInt(jakso.value, 10) || 9999;
@@ -160,8 +184,6 @@ function nayta() {
   var parasSija = sijat.length ? Math.min.apply(null, sijat) : '-';
   var korkein = Math.max.apply(null, pisteet);
 
-  // Tämän hetken luvut taulukosta
-  var b = NYT[nimi] || {};
   var ykkonen = String(b.currentRank) === '1';
   var eroYlempaan = b.diffPlace;
   if (ykkonen) eroYlempaan = '-';
@@ -170,54 +192,4 @@ function nayta() {
   var h = '<div class="card tiedot">';
   h += '<div class="head"><div><div class="teamname">' + esc(nimi) + '</div>';
   h += '<div class="meta">Viimeisin päivä ' + esc(pvm(viim.d)) + ' · näytetään ' + rivit.length + ' päivää</div></div>';
-  h += '<div class="nyt">' + esc(viim.pisteet) + '<span>pistettä nyt</span></div></div>';
-
-  h += '<div class="kaaviot">';
-  h += '<div class="kaavio"><div class="ktitle">Pistekehitys</div>' + kayra(pisteet, '#7FD4F5', 'rgba(127,212,245,.14)', false, '') + '</div>';
-  h += '<div class="kaavio"><div class="ktitle">Sijoitus (ylempänä parempi)</div>' + kayra(sijat, '#F2C14E', 'rgba(242,193,78,.12)', true, '.') + '</div>';
-  h += '</div>';
-
-  h += '<div class="stats">';
-  h += stat('Sija nyt', viim.sija === null ? '-' : viim.sija);
-  h += stat('Edellinen sija', edel && edel.sija !== null ? edel.sija : '-');
-  h += stat('Sijamuutos', sm, smCls);
-  h += stat('Ero 1.', ykkonen ? '-' : (b.diffFirst || '-'));
-  h += stat('Ero ylempään', eroYlempaan || '-');
-  h += stat('Pisteiden muutos', pm, pmCls);
-  h += stat('P/P nyt', b.pp || '-');
-  h += stat('Paras sija', parasSija);
-  h += stat('Korkeimmat pisteet', korkein);
-  h += '</div></div>';
-
-  out.innerHTML = h;
-}
-
-Promise.all([haeData('pistekehitys'), haeData('taulukko')]).then(function(res) {
-  DATA = res[0];
-  (res[1].rows || []).forEach(function(r) { NYT[r.team] = r; });
-
-  var nimet = (DATA.teams || []).map(function(t) { return t.team; })
-    .sort(function(a, b) { return a.localeCompare(b, 'fi'); });
-  if (!nimet.length) { out.innerHTML = '<div class="card virhe">Pistehistoriasta ei löytynyt dataa.</div>'; return; }
-
-  sel.innerHTML = nimet.map(function(n) {
-    return '<option value="' + esc(n) + '">' + esc(n) + '</option>';
-  }).join('');
-
-  var alku = nimet[0];
-  var haluttu = (new URLSearchParams(location.search).get('team') || '').toLowerCase();
-  nimet.forEach(function(n) { if (n.toLowerCase() === haluttu) alku = n; });
-  sel.value = alku;
-  nayta();
-
-  sel.addEventListener('change', function() {
-    nayta();
-    history.replaceState(null, '', '?team=' + encodeURIComponent(sel.value));
-  });
-  jakso.addEventListener('change', nayta);
-}).catch(function(e) {
-  out.innerHTML = '<div class="card virhe">Datan lataus epäonnistui (' + esc(e.message) + ')</div>';
-});
-</script>
-</body>
-</html>
+  h += '<div class="nyt">' +
