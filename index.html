@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NHL Pörssi 26–27</title>
 <link rel="stylesheet" href="style.css">
+<style>
+.palk{padding-bottom:12px;}
+.palk .rivi{display:flex;flex-wrap:wrap;gap:8px 18px;padding:12px 14px 4px;}
+.palk .p{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;}
+.palk .info{padding:4px 14px 0;font-size:13px;color:var(--muted);}
+</style>
 </head>
 <body>
 <header class="top"><div class="in"><div class="brand">🏒 NHL Pörssi 26–27</div></div></header>
@@ -32,6 +38,17 @@
     </table>
   </div>
   <div id="vr"></div>
+
+  <!-- Palkinnot: päivitä summat ja teksti kauden alussa -->
+  <div class="card palk">
+    <div class="ctitle">🏆 Palkinnot</div>
+    <div class="rivi">
+      <span class="p"><span class="medal m1">1</span>840 €</span>
+      <span class="p"><span class="medal m2">2</span>420 €</span>
+      <span class="p"><span class="medal m3">3</span>140 €</span>
+    </div>
+    <div class="info">28 joukkuetta, voitonjako 60–30–10</div>
+  </div>
 </main>
 
 <script src="common.js"></script>
