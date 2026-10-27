@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NHL Pörssi 26–27</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><div class="in"><div class="brand">🏒 NHL Pörssi 26–27</div></div></header>
+<nav class="nav"><div class="in">
+  <a href="./" class="on">Taulukko</a>
+  <a href="joukkueet.html">Joukkueet</a>
+  <a href="pistekehitys.html">Pistekehitys</a>
+  <a href="tilastot.html">Tilastot</a>
+  <a href="vammat.html">Vammat</a>
+</div></nav>
+
+<main class="wrap">
+  <div class="updated" id="paivitetty"></div>
+  <div class="card">
+    <table>
+      <thead><tr><th class="l">Sija</th><th class="l">Joukkue</th><th>Pisteet</th><th>P/P</th><th>Ero 1.</th><th>Ero sijaan</th></tr></thead>
+      <tbody id="rivit"><tr><td colspan="6" class="virhe">Ladataan…</td></tr></tbody>
+    </table>
+  </div>
+  <div id="vr"></div>
+</main>
+
+<script src="common.js"></script>
+<script>
+haeData('taulukko').then(function(d) {
+  document.getElementById('paivitetty').textContent = 'Päivitetty ' + (d.updatedAt || '-');
+
+  var h = '';
+  (d.rows || []).forEach(function(r) {
+    var n = parseInt(r.currentRank, 10);
+    var sija = n <= 3 ? '<span class="medal m' + n + '">' + n + '</span>'
+                      : '<span class="rk">' + esc(r.currentRank) + '</span>';
+    var muutos = '';
+    if (r.changed && r.previousRank) {
+      var ero = parseInt(r.previousRank, 10) - n;
+      if (ero > 0) muutos = '<span class="chg up">▲' + ero + '</span>';
+      if (ero < 0) muutos = '<span class="chg down">▼' + (-ero) + '</span>';
+    }
+    var ykkonen = n === 1;
+    h += '<tr><td class="l">' + sija + muutos + '</td>';
+    h += '<td class="l team"><a href="joukkueet.html?team=' + encodeURIComponent(r.team) + '">' + esc(r.team) + '</a></td>';
+    h += '<td class="pts">' + esc(r.points) + '</td>';
+    h += '<td>' + esc(r.pp) + '</td>';
+    h += '<td>' + (ykkonen ? '🏆' : esc(r.diffFirst || '-')) + '</td>';
+    h += '<td>' + (ykkonen ? '-' : esc(r.diffPlace || '-')) + '</td></tr>';
+  });
+  document.getElementById('rivit').innerHTML = h ||
+    '<tr><td colspan="6" class="virhe">Joukkueita ei ole vielä syötetty.</td></tr>';
+
+  var v = d.viikkoraportti;
+  if (v) {
+    document.getElementById('vr').innerHTML =
+      '<div class="card vr"><div class="ctitle">📰 Viikon katsaus<span class="jakso">' + esc(v.jakso) + '</span></div>' +
+      '<p><b class="up">📈 Nousijat.</b> ' + esc(v.nousijat) + '</p>' +
+      '<p><b class="down">📉 Laskijat.</b> ' + esc(v.laskijat) + '</p>' +
+      (v.kuningas ? '<p>' + esc(v.kuningas) + '</p>' : '') + '</div>';
+  }
+}).catch(function(e) {
+  document.getElementById('rivit').innerHTML =
+    '<tr><td colspan="6" class="virhe">Datan lataus epäonnistui (' + esc(e.message) + ')</td></tr>';
+});
+</script>
+</body>
+</html>
