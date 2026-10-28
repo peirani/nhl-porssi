@@ -10,6 +10,22 @@
 .palk .rivi{display:flex;flex-wrap:wrap;gap:8px 18px;padding:12px 14px 4px;}
 .palk .p{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;}
 .palk .info{padding:4px 14px 0;font-size:13px;color:var(--muted);}
+.ott .paiva{padding:10px 14px 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--line);}
+.ott .paiva:first-of-type{border-top:0;}
+.ott .lista{display:grid;gap:3px;padding:0 10px 10px;}
+.ott .peli{display:grid;grid-template-columns:3.4em minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--row2);border-radius:8px;padding:8px 10px;}
+.ott .peli.prime{background:var(--row1);box-shadow:inset 4px 0 0 var(--gold);}
+.ott .klo{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;}
+.ott .peli.prime .klo{color:var(--gold);}
+.ott .ottelu{min-width:0;}
+.ott .lyh{font-weight:700;font-size:15px;}
+.ott .lyh span{color:var(--muted);font-weight:400;margin:0 4px;}
+.ott .nimet{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ott .pool{font-size:12px;color:var(--ice);white-space:nowrap;text-align:right;}
+.ott .pool b{font-size:15px;display:block;}
+.ott .tyhja{padding:4px 4px 8px;font-size:13px;color:var(--muted);}
+.ott .selite{padding:0 14px 12px;font-size:12px;color:var(--muted);}
+.ott .selite b{color:var(--gold);}
 </style>
 </head>
 <body>
@@ -38,6 +54,13 @@
     </table>
   </div>
   <div id="vr"></div>
+
+  <!-- Tulevat ottelut (data/ottelut.json), ajat Suomen aikaa -->
+  <div class="card ott" id="ottelut" style="display:none">
+    <div class="ctitle">🗓️ Tulevat ottelut</div>
+    <div id="ottelulista"></div>
+    <div class="selite">Ajat Suomen aikaa. <b>Keltaisella</b> illan pelit klo 17–24. Oikealla pörssiin valittujen pelaajien määrä ottelussa.</div>
+  </div>
 
   <!-- Palkinnot: päivitä summat ja teksti kauden alussa -->
   <div class="card palk">
@@ -97,6 +120,63 @@ haeData('taulukko').then(function(d) {
 }).catch(function(e) {
   document.getElementById('rivit').innerHTML =
     '<tr><td colspan="6" class="virhe">Datan lataus epäonnistui (' + esc(e.message) + ')</td></tr>';
+});
+
+// ---- Tulevat ottelut: tämän illan/yön ja huomisen illan/yön pelit ----
+// Pelipäivä = Suomen aikaan alkava ilta ja sitä seuraava yö (klo 12–11.59).
+var HKI = new Intl.DateTimeFormat('fi-FI', {
+  timeZone: 'Europe/Helsinki', year: 'numeric', month: 'numeric', day: 'numeric',
+  hour: '2-digit', minute: '2-digit', hourCycle: 'h23', weekday: 'short'
+});
+function osat(aika) {
+  var o = {};
+  HKI.formatToParts(aika).forEach(function(p) { o[p.type] = p.value; });
+  return o;
+}
+function avain(o) { return o.year + '-' + o.month + '-' + o.day; }
+function pelipaiva(aika) { return avain(osat(new Date(aika.getTime() - 12 * 3600000))); }
+
+haeData('ottelut').then(function(d) {
+  var nyt = new Date();
+  var tanaan = osat(nyt);
+  var huomenna = osat(new Date(nyt.getTime() + 24 * 3600000));
+  var paivat = [
+    { key: avain(tanaan), nimi: 'Tänään ' + tanaan.weekday + ' ' + tanaan.day + '.' + tanaan.month + '.', pelit: [] },
+    { key: avain(huomenna), nimi: 'Huomenna ' + huomenna.weekday + ' ' + huomenna.day + '.' + huomenna.month + '.', pelit: [] }
+  ];
+
+  (d.games || []).forEach(function(g) {
+    if (!g.start) return;
+    var alku = new Date(g.start);
+    if (alku.getTime() < nyt.getTime() - 3 * 3600000) return;   // jo pelatut pois
+    var k = pelipaiva(alku);
+    paivat.forEach(function(p) { if (p.key === k) p.pelit.push({ g: g, alku: alku }); });
+  });
+
+  var h = '';
+  paivat.forEach(function(p) {
+    p.pelit.sort(function(a, b) { return a.alku - b.alku; });
+    h += '<div class="paiva">' + esc(p.nimi) + ' · illan ja yön pelit</div><div class="lista">';
+    if (!p.pelit.length) h += '<div class="tyhja">Ei otteluita.</div>';
+    p.pelit.forEach(function(x) {
+      var o = osat(x.alku);
+      var tunti = parseInt(o.hour, 10);
+      var prime = tunti >= 17;
+      var pool = (x.g.away.pool || 0) + (x.g.home.pool || 0);
+      h += '<div class="peli' + (prime ? ' prime' : '') + '">';
+      h += '<div class="klo">' + o.hour + '.' + o.minute + '</div>';
+      h += '<div class="ottelu"><div class="lyh">' + esc(x.g.away.abbrev) + '<span>@</span>' + esc(x.g.home.abbrev) + '</div>';
+      h += '<div class="nimet">' + esc(x.g.away.name) + ' – ' + esc(x.g.home.name) + '</div></div>';
+      h += '<div class="pool">' + (pool ? '<b>' + pool + '</b>pörssipel.' : '') + '</div>';
+      h += '</div>';
+    });
+    h += '</div>';
+  });
+
+  document.getElementById('ottelulista').innerHTML = h;
+  document.getElementById('ottelut').style.display = '';
+}).catch(function() {
+  // Jos otteluohjelmaa ei ole vielä viety, kortti jää piiloon
 });
 </script>
 </body>
