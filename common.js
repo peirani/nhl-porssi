@@ -1,5 +1,18 @@
 // Yhteiset apufunktiot kaikille sivuille
 
+// Google Analytics (mittaustunnus G-D9YG4FNJRC, striimi "NHL Pörssi GitHub")
+(function() {
+  var GA_ID = 'G-D9YG4FNJRC';
+  var s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+  document.head.appendChild(s);
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function() { dataLayer.push(arguments); };
+  gtag('js', new Date());
+  gtag('config', GA_ID);
+})();
+
 // Kuvakkeet ja sovellustiedot kaikille sivuille (aloitusnäytön kuvake, välilehden kuvake)
 (function() {
   var linkit = [
