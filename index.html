@@ -26,6 +26,10 @@
 .ott .tyhja{padding:4px 4px 8px;font-size:13px;color:var(--muted);}
 .ott .selite{padding:0 14px 12px;font-size:12px;color:var(--muted);}
 .ott .selite b{color:var(--gold);}
+.vdot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--gold);margin-left:5px;vertical-align:1px;}
+.vdot:first-of-type{margin-left:8px;}
+.vselite{font-size:12px;color:var(--muted);padding:8px 12px;}
+.vselite .vdot{margin:0 4px 0 0;}
 </style>
 </head>
 <body>
@@ -52,6 +56,7 @@
       </tr></thead>
       <tbody id="rivit"><tr><td colspan="6" class="virhe">Ladataan…</td></tr></tbody>
     </table>
+    <div class="vselite"><span class="vdot"></span>= tehty vaihto (kaudessa enintään 2)</div>
   </div>
   <div id="vr"></div>
 
@@ -76,7 +81,15 @@
 
 <script src="common.js"></script>
 <script>
-haeData('taulukko').then(function(d) {
+// Vaihtojen määrä joukkueittain joukkueet.json:sta (jos haku epäonnistuu, taulukko näkyy ilman pallukoita)
+var vaihdotHaku = haeData('joukkueet').then(function(j) {
+  var m = {};
+  (j.teams || []).forEach(function(t) { m[t.name] = (t.trades || []).length; });
+  return m;
+}).catch(function() { return {}; });
+
+Promise.all([haeData('taulukko'), vaihdotHaku]).then(function(res) {
+  var d = res[0], vaihdot = res[1];
   document.getElementById('paivitetty').textContent = 'Päivitetty ' + (d.updatedAt || '-');
 
   var h = '';
@@ -100,7 +113,11 @@ haeData('taulukko').then(function(d) {
     else if (!/^\d+$/.test(String(es || '').trim())) es = (n === 2 ? r.diffFirst : '-');
 
     h += '<tr><td class="l sija">' + sija + muutos + '</td>';
-    h += '<td class="l team"><a href="joukkueet.html?team=' + encodeURIComponent(r.team) + '">' + esc(r.team) + '</a></td>';
+    var nv = vaihdot[r.team] || 0;
+    var pallot = '';
+    for (var i = 0; i < nv; i++) pallot += '<span class="vdot"></span>';
+    if (nv) pallot = '<span title="' + nv + (nv === 1 ? ' vaihto' : ' vaihtoa') + '">' + pallot + '</span>';
+    h += '<td class="l team"><a href="joukkueet.html?team=' + encodeURIComponent(r.team) + '">' + esc(r.team) + '</a>' + pallot + '</td>';
     h += '<td class="pts">' + esc(r.points) + '</td>';
     h += '<td>' + esc(r.pp) + '</td>';
     h += '<td>' + e1 + '</td>';
