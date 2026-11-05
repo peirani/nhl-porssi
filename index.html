@@ -21,6 +21,7 @@
 .ott .lyh{font-weight:700;font-size:15px;}
 .ott .lyh span{color:var(--muted);font-weight:400;margin:0 4px;}
 .ott .nimet{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ott .jt{font-size:11px;color:var(--ice);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
 .ott .pool{font-size:12px;color:var(--ice);white-space:nowrap;text-align:right;}
 .ott .pool b{font-size:15px;display:block;}
 .ott .tyhja{padding:4px 4px 8px;font-size:13px;color:var(--muted);}
@@ -64,7 +65,7 @@
   <div class="card ott" id="ottelut" style="display:none">
     <div class="ctitle">🗓️ Tulevat ottelut</div>
     <div id="ottelulista"></div>
-    <div class="selite">Ajat Suomen aikaa. <b>Keltaisella</b> illan pelit klo 17–24. Oikealla pörssiin valittujen pelaajien määrä ottelussa.</div>
+    <div class="selite">Ajat Suomen aikaa. <b>Keltaisella</b> illan pelit klo 17–24. Oikealla pörssiin valittujen pelaajien määrä ottelussa. <span style="color:var(--ice)">Sinisellä</span> joukkueen maalit tehdyt–päästetyt per ottelu ja ylivoimaprosentti.</div>
   </div>
 
   <!-- Palkinnot: päivitä summat ja teksti kauden alussa -->
@@ -153,7 +154,18 @@ function osat(aika) {
 function avain(o) { return o.year + '-' + o.month + '-' + o.day; }
 function pelipaiva(aika) { return avain(osat(new Date(aika.getTime() - 12 * 3600000))); }
 
-haeData('ottelut').then(function(d) {
+function jtRivi(abbr, J) {
+  var t = J[abbr];
+  if (!t) return '';
+  var f = function(x) { return x === null || x === undefined ? '-' : Number(x).toFixed(1).replace('.', ','); };
+  return abbr + ' ' + f(t.gf) + '–' + f(t.ga) + (t.pp !== null && t.pp !== undefined ? ' · YV ' + Math.round(t.pp) + ' %' : '');
+}
+
+// Joukkuetilastot (data/edistynyt.json) ovat lisä: jos haku epäonnistuu, otteluohjelma näkyy ilman niitä
+var joukkHaku = haeData('edistynyt').then(function(e) { return e.joukkueet || {}; }).catch(function() { return {}; });
+
+Promise.all([haeData('ottelut'), joukkHaku]).then(function(rr) {
+  var d = rr[0], J = rr[1];
   var nyt = new Date();
   var tanaan = osat(nyt);
   var huomenna = osat(new Date(nyt.getTime() + 24 * 3600000));
@@ -183,7 +195,10 @@ haeData('ottelut').then(function(d) {
       h += '<div class="peli' + (prime ? ' prime' : '') + '">';
       h += '<div class="klo">' + o.hour + '.' + o.minute + '</div>';
       h += '<div class="ottelu"><div class="lyh">' + esc(x.g.away.abbrev) + '<span>@</span>' + esc(x.g.home.abbrev) + '</div>';
-      h += '<div class="nimet">' + esc(x.g.away.name) + ' – ' + esc(x.g.home.name) + '</div></div>';
+      h += '<div class="nimet">' + esc(x.g.away.name) + ' – ' + esc(x.g.home.name) + '</div>';
+      var ja = jtRivi(x.g.away.abbrev, J), jk = jtRivi(x.g.home.abbrev, J);
+      if (ja || jk) h += '<div class="jt">' + esc([ja, jk].filter(Boolean).join('  |  ')) + '</div>';
+      h += '</div>';
       h += '<div class="pool">' + (pool ? '<b>' + pool + '</b>pörssipel.' : '') + '</div>';
       h += '</div>';
     });
