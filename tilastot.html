@@ -25,7 +25,8 @@
 .pstats b{display:block;font-size:17px;}
 .pstats span{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
 .pstats.adv div{background:var(--bg);}
-.pstats.adv b{color:var(--ice);font-size:16px;}
+.pstats.adv b{color:var(--ice);font-size:16px;white-space:nowrap;}
+.pstats.adv span{white-space:nowrap;}
 .psub{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
 .plist{display:grid;gap:3px;}
 .prow{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;background:var(--row1);border-radius:8px;padding:7px 10px;font-size:15px;}
@@ -46,7 +47,9 @@ td.plink{cursor:pointer;text-decoration:underline;text-decoration-color:rgba(127
   .ppts{font-size:24px;}
   .prow{font-size:14px;}
   .pstats span{font-size:9px;letter-spacing:.03em;}
+  .pstats.adv div{padding:6px 2px;}
   .pstats.adv b{font-size:15px;}
+  .pstats.adv span{letter-spacing:0;font-size:8.5px;}
   table.st th{padding:7px 5px;}
   table.st td{padding:8px 5px;}
 }
@@ -122,7 +125,7 @@ function nayta(nimi) {
     h += '<div><b>' + aika(a.toi) + '</b><span>Peliaika/ott</span></div>';
     h += '<div><b>' + aika(a.pp) + '</b><span>YV-aika/ott</span></div>';
     h += '<div><b>' + (a.sog === null ? '-' : esc(a.sog)) + '</b><span>Laukaukset</span></div>';
-    h += '<div><b>' + luku(a.spct, 1) + (a.spct === null ? '' : ' %') + '</b><span>Laukais-%</span></div>';
+    h += '<div><b>' + luku(a.spct, 1) + (a.spct === null ? '' : '\u00a0%') + '</b><span>Laukais-%</span></div>';
     h += '</div>';
   }
   h += '<div class="psub">Valittu ' + joukkueet.length + ' joukkueeseen</div><div class="plist">';
