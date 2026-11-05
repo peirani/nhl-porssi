@@ -24,6 +24,8 @@
 .pstats div{background:var(--row1);border-radius:8px;padding:6px;text-align:center;}
 .pstats b{display:block;font-size:17px;}
 .pstats span{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+.pstats.adv div{background:var(--bg);}
+.pstats.adv b{color:var(--ice);font-size:16px;}
 .psub{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
 .plist{display:grid;gap:3px;}
 .prow{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;background:var(--row1);border-radius:8px;padding:7px 10px;font-size:15px;}
@@ -43,6 +45,8 @@ td.plink{cursor:pointer;text-decoration:underline;text-decoration-color:rgba(127
   .pname{font-size:18px;}
   .ppts{font-size:24px;}
   .prow{font-size:14px;}
+  .pstats span{font-size:9px;letter-spacing:.03em;}
+  .pstats.adv b{font-size:15px;}
   table.st th{padding:7px 5px;}
   table.st td{padding:8px 5px;}
 }
@@ -72,13 +76,24 @@ td.plink{cursor:pointer;text-decoration:underline;text-decoration-color:rgba(127
 <script src="common.js"></script>
 <script>
 var PLAYERS = {};
+var ADV = {};   // edistynyt data pelaajittain (data/edistynyt.json)
 var NIMET = [];
 var q = document.getElementById('pq');
 var sugg = document.getElementById('psugg');
 var res = document.getElementById('pres');
 
 function norm(t) {
-  return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+// sekunnit -> m.ss (esim. 1411 -> 23.31)
+function aika(s) {
+  if (s === null || s === undefined) return '-';
+  s = Math.round(s);
+  return Math.floor(s / 60) + '.' + ('0' + (s % 60)).slice(-2);
+}
+function luku(x, d) {
+  if (x === null || x === undefined) return '-';
+  return Number(x).toFixed(d).replace('.', ',');
 }
 
 // Näyttää valitun pelaajan kortin
@@ -101,6 +116,15 @@ function nayta(nimi) {
   h += '<div><b>' + esc(eka.s || '-') + '</b><span>S</span></div>';
   h += '<div><b>' + esc(eka.p || '-') + '</b><span>P</span></div>';
   h += '</div>';
+  var a = ADV[nimi];
+  if (a) {
+    h += '<div class="pstats adv">';
+    h += '<div><b>' + aika(a.toi) + '</b><span>Peliaika/ott</span></div>';
+    h += '<div><b>' + aika(a.pp) + '</b><span>YV-aika/ott</span></div>';
+    h += '<div><b>' + (a.sog === null ? '-' : esc(a.sog)) + '</b><span>Laukaukset</span></div>';
+    h += '<div><b>' + luku(a.spct, 1) + (a.spct === null ? '' : ' %') + '</b><span>Laukais-%</span></div>';
+    h += '</div>';
+  }
   h += '<div class="psub">Valittu ' + joukkueet.length + ' joukkueeseen</div><div class="plist">';
   joukkueet.forEach(function(t) {
     h += '<div class="prow"><span class="prank">' + esc(t.rank ? t.rank + '.' : '') + '</span>';
@@ -134,8 +158,8 @@ function piirraOsiot(osiot) {
   if (!osiot.length) { el.innerHTML = '<div class="card virhe">Tilastoja ei löytynyt.</div>'; return; }
 
   el.innerHTML = osiot.map(function(b) {
-    var leveä = b.headers.length >= 4 ? ' wide' : '';
-    var h = '<div class="card' + leveä + '"><div class="ctitle">' + esc(b.title) + '</div>';
+    var levea = b.headers.length >= 4 ? ' wide' : '';
+    var h = '<div class="card' + levea + '"><div class="ctitle">' + esc(b.title) + '</div>';
     h += '<div class="scroll"><table class="st"><thead><tr>';
     b.headers.forEach(function(x, i) {
       h += '<th' + (i === 0 ? ' class="l"' : '') + '>' + esc(x) + '</th>';
@@ -159,7 +183,7 @@ function piirraOsiot(osiot) {
     return h + '</tbody></table></div></div>';
   }).join('');
 
-  // Pelaajan nimen napautus avaa hän hakuun
+  // Pelaajan nimen napautus avaa hänet hakuun
   el.addEventListener('click', function(e) {
     var td = e.target.closest('td.plink');
     if (!td) return;
@@ -174,7 +198,12 @@ sugg.addEventListener('click', function(e) {
   if (b) nayta(b.getAttribute('data-n'));
 });
 
-haeData('tilastot').then(function(d) {
+// Edistynyt data on lisä: jos sitä ei saada, sivu toimii ilman sitä
+var advHaku = haeData('edistynyt').then(function(d) { return d.pelaajat || {}; }).catch(function() { return {}; });
+
+Promise.all([haeData('tilastot'), advHaku]).then(function(r) {
+  var d = r[0];
+  ADV = r[1];
   PLAYERS = d.pelaajat || {};
   NIMET = Object.keys(PLAYERS).sort(function(a, b) { return a.localeCompare(b, 'fi'); });
   document.getElementById('paivitetty').textContent = 'Päivitetty ' + (d.updatedAt || '-');
