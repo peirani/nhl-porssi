@@ -204,8 +204,8 @@ Promise.all([haeData('ottelut'), joukkHaku]).then(function(rr) {
       h += '<div class="ottelu"><div class="lyh">' + esc(x.g.away.abbrev) + '<span>@</span>' + esc(x.g.home.abbrev) + '</div>';
       h += '<div class="nimet">' + esc(x.g.away.name) + ' – ' + esc(x.g.home.name) + '</div>';
       var ja = jtRivi(x.g.away.abbrev, J), jk = jtRivi(x.g.home.abbrev, J);
-      var osat = [ja, jk].filter(Boolean).map(function(x) { return '<span class="jtt">' + esc(x) + '</span>'; });
-      if (osat.length) h += '<div class="jt">' + osat.join('<span class="sep">|</span>') + '</div>';
+      var jtOsat = [ja, jk].filter(Boolean).map(function(x) { return '<span class="jtt">' + esc(x) + '</span>'; });
+      if (jtOsat.length) h += '<div class="jt">' + jtOsat.join('<span class="sep">|</span>') + '</div>';
       h += '</div>';
       h += '<div class="pool">' + (pool ? '<b>' + pool + '</b>pörssipel.' : '') + '</div>';
       h += '</div>';
