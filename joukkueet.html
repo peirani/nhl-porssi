@@ -19,6 +19,7 @@ table.pel{table-layout:fixed;}
 table.pel th.n{width:3em;}
 .nm{font-weight:600;word-break:break-word;}
 .sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.adv{font-size:11px;color:var(--ice);margin-top:2px;}
 .tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;background:var(--ice);color:var(--bg);border-radius:999px;padding:2px 7px;margin-left:6px;vertical-align:2px;}
 .tsub{font-size:11px;color:var(--ice);margin-top:2px;}
 tr.tot td{background:var(--bg) !important;font-weight:700;border-top:2px solid var(--red);}
@@ -26,6 +27,8 @@ tr.tot td{background:var(--bg) !important;font-weight:700;border-top:2px solid v
 .tdate{font-size:12px;font-weight:700;color:var(--muted);}
 .tin{color:var(--ice);}
 .tnone{padding:10px 14px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);}
+.selite{padding:2px 4px;font-size:12px;color:var(--muted);}
+.selite b{color:var(--ice);font-weight:400;}
 @media (max-width:520px){
   .boxes{grid-template-columns:repeat(2,1fr);gap:6px;}
   .teamname{font-size:18px;}
@@ -51,14 +54,33 @@ tr.tot td{background:var(--bg) !important;font-weight:700;border-top:2px solid v
     <select id="valikko"></select>
   </div>
   <div id="out" style="display:grid;gap:12px;"><div class="card virhe">Ladataan…</div></div>
+  <div class="selite" id="selite" style="display:none"><b>Sinisellä</b> pelaajan peliaika ja ylivoima-aika per ottelu sekä kauden laukaukset.</div>
 </main>
 
 <script src="common.js"></script>
 <script>
 var VAIHTOJEN_MAX = 2;
 var TEAMS = [];
+var ADV = {};   // edistynyt data pelaajittain (data/edistynyt.json)
 var sel = document.getElementById('valikko');
 var out = document.getElementById('out');
+
+// sekunnit -> m.ss (esim. 1411 -> 23.31)
+function aika(s) {
+  if (s === null || s === undefined) return '';
+  s = Math.round(s);
+  return Math.floor(s / 60) + '.' + ('0' + (s % 60)).slice(-2);
+}
+
+function advRivi(nimi) {
+  var a = ADV[nimi];
+  if (!a) return '';
+  var osat = [];
+  if (a.toi) osat.push(aika(a.toi) + '/ott');
+  if (a.pp) osat.push('YV ' + aika(a.pp));
+  if (a.sog !== null && a.sog !== undefined) osat.push(a.sog + ' lauk.');
+  return osat.length ? '<div class="adv">' + esc(osat.join(' · ')) + '</div>' : '';
+}
 
 function box(l, v) {
   return '<div class="box"><div class="lbl">' + l + '</div><div class="val">' + esc(v || '-') + '</div></div>';
@@ -76,7 +98,7 @@ function osio(otsikko, lista, yht) {
       tsub = '<div class="tsub">' + (p.trade.date ? 'Tuli ' + esc(p.trade.date) : 'Tuli vaihdossa') +
              (p.trade.out ? ', tilalta ' + esc(p.trade.out) : '') + '</div>';
     }
-    h += '<tr><td class="l"><div class="nm">' + esc(p.name) + tag + '</div><div class="sub">' + esc(sub) + '</div>' + tsub + '</td>';
+    h += '<tr><td class="l"><div class="nm">' + esc(p.name) + tag + '</div><div class="sub">' + esc(sub) + '</div>' + advRivi(p.name) + tsub + '</td>';
     h += '<td>' + esc(p.gp) + '</td><td>' + esc(p.g) + '</td><td>' + esc(p.a) + '</td><td class="pts">' + esc(p.p) + '</td></tr>';
   });
   h += '<tr class="tot"><td class="l">Yhteensä</td><td>' + esc(yht.gp) + '</td><td>' + esc(yht.g) + '</td><td>' + esc(yht.a) + '</td><td class="pts">' + esc(yht.p) + '</td></tr>';
@@ -111,8 +133,13 @@ function nayta(nimi) {
   out.innerHTML = h;
 }
 
-Promise.all([haeData('joukkueet'), haeData('taulukko')]).then(function(res) {
+// Edistynyt data on lisä: jos sitä ei saada, sivu toimii ilman sitä
+var advHaku = haeData('edistynyt').then(function(d) { return d.pelaajat || {}; }).catch(function() { return {}; });
+
+Promise.all([haeData('joukkueet'), haeData('taulukko'), advHaku]).then(function(res) {
   TEAMS = res[0].teams || [];
+  ADV = res[2];
+  if (Object.keys(ADV).length) document.getElementById('selite').style.display = '';
   document.getElementById('paivitetty').textContent = 'Päivitetty ' + (res[0].updatedAt || '-');
 
   // Sijoitukset taulukosta
