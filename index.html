@@ -31,6 +31,19 @@
 }
 .ott .pool{font-size:12px;color:var(--ice);white-space:nowrap;text-align:right;}
 .ott .pool b{font-size:15px;display:block;}
+.ott .pool{cursor:pointer;border-radius:8px;padding:4px 6px;margin:-4px -6px;}
+.ott .pool:hover{background:rgba(127,212,245,.12);}
+.ott .pool .nuoli{display:inline-block;font-size:10px;margin-left:3px;transition:transform .15s;}
+.ott .peli.auki .pool .nuoli{transform:rotate(180deg);}
+.ott .lisa{display:none;grid-column:1/-1;border-top:1px solid var(--line);margin-top:8px;padding-top:8px;font-size:13px;line-height:1.5;}
+.ott .peli.auki .lisa{display:block;}
+.ott .lisa .nhlj{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin:6px 0 2px;}
+.ott .lisa .nhlj:first-child{margin-top:0;}
+.ott .lisa .pr{display:flex;gap:8px;flex-wrap:wrap;}
+.ott .lisa .pn{font-weight:700;color:var(--ice);min-width:9em;}
+.ott .lisa .pt{color:var(--text);}
+.ott .lisa .pt a{text-decoration:none;}
+.ott .lisa .pt a:hover{text-decoration:underline;}
 .ott .tyhja{padding:4px 4px 8px;font-size:13px;color:var(--muted);}
 .ott .selite{padding:0 14px 12px;font-size:12px;color:var(--muted);}
 .ott .selite b{color:var(--gold);}
@@ -72,7 +85,7 @@
   <div class="card ott" id="ottelut" style="display:none">
     <div class="ctitle">🗓️ Tulevat ottelut</div>
     <div id="ottelulista"></div>
-    <div class="selite">Ajat Suomen aikaa. <b>Keltaisella</b> illan pelit klo 17–24. Oikealla pörssiin valittujen pelaajien määrä ottelussa. <span style="color:var(--ice)">Sinisellä</span> joukkueen maalit tehdyt–päästetyt per ottelu ja ylivoimaprosentti.</div>
+    <div class="selite">Ajat Suomen aikaa. <b>Keltaisella</b> illan pelit klo 17–24. Oikealla pörssiin valittujen pelaajien määrä ottelussa – napauta nähdäksesi pelaajat ja joukkueet. <span style="color:var(--ice)">Sinisellä</span> joukkueen maalit tehdyt–päästetyt per ottelu ja ylivoimaprosentti.</div>
   </div>
 
   <!-- Palkinnot: päivitä summat ja teksti kauden alussa -->
@@ -169,10 +182,42 @@ function jtRivi(abbr, J) {
 }
 
 // Joukkuetilastot (data/edistynyt.json) ovat lisä: jos haku epäonnistuu, otteluohjelma näkyy ilman niitä
+// Pörssipelaajat NHL-joukkueittain (data/tilastot.json), napautettavaa listaa varten
+var poolHaku = haeData('tilastot').then(function(t) {
+  var m = {};
+  var P = t.pelaajat || {};
+  Object.keys(P).forEach(function(nimi) {
+    var p = P[nimi];
+    var abbr = String(p.nhl || '').split(/[,\/]/).pop().trim().toUpperCase();
+    if (!abbr) return;
+    var tiimit = (p.teams || []).slice().sort(function(a, b) {
+      return (parseInt(a.rank, 10) || 999) - (parseInt(b.rank, 10) || 999);
+    });
+    (m[abbr] = m[abbr] || []).push({ nimi: nimi, tiimit: tiimit });
+  });
+  Object.keys(m).forEach(function(k) {
+    m[k].sort(function(a, b) { return b.tiimit.length - a.tiimit.length || a.nimi.localeCompare(b.nimi, 'fi'); });
+  });
+  return m;
+}).catch(function() { return {}; });
+
+function lisaJoukkue(abbr, M) {
+  var lista = M[abbr] || [];
+  var h = '<div class="nhlj">' + esc(abbr) + '</div>';
+  if (!lista.length) return h + '<div class="pt">Ei pörssipelaajia</div>';
+  lista.forEach(function(x) {
+    h += '<div class="pr"><span class="pn">' + esc(x.nimi) + '</span><span class="pt">' +
+      x.tiimit.map(function(t) {
+        return '<a href="joukkueet.html?team=' + encodeURIComponent(t.team) + '">' + esc(t.team) + '</a>';
+      }).join(', ') + '</span></div>';
+  });
+  return h;
+}
+
 var joukkHaku = haeData('edistynyt').then(function(e) { return e.joukkueet || {}; }).catch(function() { return {}; });
 
-Promise.all([haeData('ottelut'), joukkHaku]).then(function(rr) {
-  var d = rr[0], J = rr[1];
+Promise.all([haeData('ottelut'), joukkHaku, poolHaku]).then(function(rr) {
+  var d = rr[0], J = rr[1], M = rr[2];
   var nyt = new Date();
   var tanaan = osat(nyt);
   var huomenna = osat(new Date(nyt.getTime() + 24 * 3600000));
@@ -207,13 +252,21 @@ Promise.all([haeData('ottelut'), joukkHaku]).then(function(rr) {
       var jtOsat = [ja, jk].filter(Boolean).map(function(x) { return '<span class="jtt">' + esc(x) + '</span>'; });
       if (jtOsat.length) h += '<div class="jt">' + jtOsat.join('<span class="sep">|</span>') + '</div>';
       h += '</div>';
-      h += '<div class="pool">' + (pool ? '<b>' + pool + '</b>pörssipel.' : '') + '</div>';
+      h += '<div class="pool">' + (pool ? '<b>' + pool + '</b>pörssipel.<span class="nuoli">▼</span>' : '') + '</div>';
+      if (pool) h += '<div class="lisa">' + lisaJoukkue(x.g.away.abbrev, M) + lisaJoukkue(x.g.home.abbrev, M) + '</div>';
       h += '</div>';
     });
     h += '</div>';
   });
 
-  document.getElementById('ottelulista').innerHTML = h;
+  var ol = document.getElementById('ottelulista');
+  ol.innerHTML = h;
+  // Pörssipelaajien määrän napautus avaa/sulkee listan
+  ol.addEventListener('click', function(e) {
+    var p = e.target.closest('.pool');
+    if (!p || !p.querySelector('b')) return;
+    p.parentNode.classList.toggle('auki');
+  });
   document.getElementById('ottelut').style.display = '';
 }).catch(function() {
   // Jos otteluohjelmaa ei ole vielä viety, kortti jää piiloon
