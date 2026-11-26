@@ -11,7 +11,7 @@
 select{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px;background:var(--row1);color:var(--text);}
 .tiedot{padding:12px 14px;}
 .teamname{font-size:20px;font-weight:700;margin-bottom:10px;word-break:break-word;}
-.boxes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.boxes{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
 .box{background:var(--row1);border-radius:10px;padding:8px 10px;}
 .box .lbl{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
 .box .val{margin-top:2px;font-size:16px;font-weight:700;white-space:nowrap;}
@@ -30,7 +30,9 @@ tr.tot td{background:var(--bg) !important;font-weight:700;border-top:2px solid v
 .selite{padding:2px 4px;font-size:12px;color:var(--muted);}
 .selite b{color:var(--ice);font-weight:400;}
 @media (max-width:520px){
-  .boxes{grid-template-columns:repeat(2,1fr);gap:6px;}
+  .boxes{grid-template-columns:repeat(6,1fr);gap:6px;}
+  .boxes .box{grid-column:span 2;}
+  .boxes .box.leve{grid-column:span 3;}
   .teamname{font-size:18px;}
   table.pel th.n{width:2.6em;}
   .trow{font-size:13px;}
@@ -82,8 +84,8 @@ function advRivi(nimi) {
   return osat.length ? '<div class="adv">' + esc(osat.join(' · ')) + '</div>' : '';
 }
 
-function box(l, v) {
-  return '<div class="box"><div class="lbl">' + l + '</div><div class="val">' + esc(v || '-') + '</div></div>';
+function box(l, v, luokka) {
+  return '<div class="box' + (luokka ? ' ' + luokka : '') + '"><div class="lbl">' + l + '</div><div class="val">' + esc(v || '-') + '</div></div>';
 }
 
 function osio(otsikko, lista, yht) {
@@ -124,8 +126,8 @@ function nayta(nimi) {
   TEAMS.forEach(function(x) { if (x.name === nimi) t = x; });
   if (!t) { out.innerHTML = '<div class="card virhe">Joukkuetta ei löytynyt.</div>'; return; }
   var h = '<div class="card tiedot"><div class="teamname">' + esc(t.name) + '</div><div class="boxes">';
-  h += box('Sija', t.rank) + box('Pisteet', t.total.p) +
-       box('Hinta', t.cost ? t.cost + ' €' : '') + box('Jäljellä', t.remaining ? t.remaining + ' €' : '');
+  h += box('Sija', t.rank) + box('Pisteet', t.total.p) + box('Ottelut', t.total.gp) +
+       box('Hinta', t.cost ? t.cost + ' €' : '', 'leve') + box('Jäljellä', t.remaining ? t.remaining + ' €' : '', 'leve');
   h += '</div></div>';
   h += vaihdot(t);
   h += osio('Puolustajat', t.defense, t.defenseTotal);
